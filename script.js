@@ -19,6 +19,20 @@ $(document).ready(function () {
     }
     return '';
   }
+  
+  function extractInstagramHandle(url) {
+    if (!url) return '';
+    try {
+      // Split by 'instagram.com/' and take the next part
+      const parts = url.split('instagram.com/')[1];
+      if (!parts) return '';
+      // Remove trailing slash and query params
+      const handle = parts.split('/')[0].split('?')[0];
+      return handle ? `@${handle}` : '';
+    } catch (e) {
+      return '';
+    }
+  }
 
   // Initialize AOS
   AOS.init({ duration: 800, once: false, offset: 100, easing: 'ease-out-cubic' });
@@ -43,7 +57,7 @@ $(document).ready(function () {
     try {
       // Small delay to ensure Firebase initializes completely before fetching
       await new Promise(r => setTimeout(r, 100));
-      
+
       const { doc, getDoc } = window.firebaseFirestoreVars;
       const settingsRef = doc(window.firebaseDb, "settings", "main");
       const docSnap = await getDoc(settingsRef);
@@ -77,6 +91,9 @@ $(document).ready(function () {
       } else {
         $('#footer-brand').text(brand);
       }
+      
+      // Update Copyright Name
+      $('#footer-copyright-name').text(`${brand} Studio`);
 
       if (settings.siteInfo.tagline) $('#hero-tagline').text(settings.siteInfo.tagline);
       if (settings.siteInfo.footerText) $('#footer-text').text(settings.siteInfo.footerText);
@@ -101,7 +118,7 @@ $(document).ready(function () {
     // Services
     if (settings.services && settings.services.length > 0) {
       const servicesHtml = settings.services.map((s, i) => `
-        <div class="service-card group bg-gray-50 dark:bg-white/5 p-8 rounded-3xl border border-gray-100 dark:border-white/10 hover:border-brand-500/50 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(139,92,246,0.15)] hover:-translate-y-2 relative overflow-hidden" 
+        <div class="service-card group bg-gray-50 dark:bg-white/5 p-8 border border-gray-100 dark:border-white/10 hover:border-brand-500/50 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(139,92,246,0.15)] hover:-translate-y-2 relative overflow-hidden" 
              data-aos="fade-up" data-aos-delay="${100 * (i + 1)}">
           <div class="absolute -right-4 -top-4 w-24 h-24 bg-brand-500/5 rounded-full group-hover:scale-150 transition-transform duration-700"></div>
           <div class="service-icon w-16 h-16 bg-brand-500/10 text-brand-500 rounded-2xl flex items-center justify-center text-3xl mb-8 group-hover:bg-brand-500 group-hover:text-white transition-all duration-300 shadow-inner">
@@ -122,12 +139,12 @@ $(document).ready(function () {
     if (settings.reelsItems && settings.reelsItems.length > 0) {
       const reelsHtml = settings.reelsItems.map(item => {
         const embedUrl = getInstagramEmbedUrl(item.image);
-        
+
         // If it's a valid IG link, use Iframe. Otherwise, fallback to Image.
         if (embedUrl) {
           return `
             <div class="carousel-slide">
-              <div class="reel-iframe-container reels-loading min-w-[300px] w-[300px] bg-black rounded-3xl overflow-hidden shadow-2xl border-4 border-gray-800 transition-all hover:border-brand-500">
+              <div class="reel-iframe-container reels-loading min-w-[300px] w-[300px] bg-black overflow-hidden shadow-2xl border-4 border-gray-800 transition-all hover:border-brand-500">
                 <iframe 
                   src="${embedUrl}" 
                   class="w-full h-full reel-iframe" 
@@ -144,7 +161,7 @@ $(document).ready(function () {
           // Fallback to Image View
           return `
             <div class="carousel-slide">
-              <div class="min-w-[300px] w-[300px] aspect-[9/16] bg-gray-800 rounded-3xl relative overflow-hidden group cursor-pointer border-4 border-gray-800 hover:border-brand-500 transition-all reel-fallback" data-url="${escapeHtml(item.image)}">
+              <div class="min-w-[300px] w-[300px] aspect-[9/16] bg-gray-800 relative overflow-hidden group cursor-pointer border-4 border-gray-800 hover:border-brand-500 transition-all reel-fallback" data-url="${escapeHtml(item.image)}">
                 <img src="${item.image}" alt="${escapeHtml(item.alt || item.title || 'Reel')}" class="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-700">
                 <div class="absolute inset-0 flex items-center justify-center">
                   <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center text-white text-2xl group-hover:bg-brand-500 transition-colors">
@@ -159,13 +176,13 @@ $(document).ready(function () {
           `;
         }
       }).join('');
-      
+
       $('#reelTrack').html(reelsHtml);
-      $('#reelTrack').find('.reel-iframe').on('load', function() {
+      $('#reelTrack').find('.reel-iframe').on('load', function () {
         $(this).parent().removeClass('reels-loading');
         $(this).addClass('loaded');
       });
-      $('#reelTrack').find('.reel-fallback').on('click', function() {
+      $('#reelTrack').find('.reel-fallback').on('click', function () {
         window.open($(this).data('url'), '_blank');
       });
       initReelCarousel();
@@ -175,13 +192,19 @@ $(document).ready(function () {
     if (settings.testimonials && settings.testimonials.length > 0) {
       const contactHtml = settings.testimonials.map(t => `
         <div class="carousel-slide px-4">
-          <div class="testimonial-card text-center">
-            <div class="text-5xl text-brand-500 mb-4">“</div>
-            <p class="text-lg text-gray-700 leading-relaxed mb-6">${escapeHtml(t.quote)}</p>
-            <div class="flex items-center justify-center gap-4">
-              <div class="text-left">
-                <h4 class="font-bold text-gray-900">${escapeHtml(t.name)}</h4>
-                <p class="text-sm text-gray-500">Client • ${'★'.repeat(t.rating)}</p>
+          <div class="testimonial-card">
+            <div class="testimonial-quote-mark">“</div>
+            <div class="testimonial-stars">${'★'.repeat(t.rating || 5)}${'☆'.repeat(5 - (t.rating || 5))}</div>
+            <p class="testimonial-text">
+              "${escapeHtml(t.quote)}"
+            </p>
+            <div class="flex items-center gap-5 mt-auto text-left">
+              ${t.image 
+                ? `<img src="${escapeHtml(t.image)}" alt="${escapeHtml(t.name)}" class="testimonial-client-img" loading="lazy">`
+                : `<div class="testimonial-client-img bg-brand-500/10 flex items-center justify-center text-brand-500 text-2xl"><i class="fa-solid fa-user"></i></div>`}
+              <div class="text-left border-l-2 border-brand-500/20 pl-5">
+                <h4 class="font-black text-gray-900 dark:text-white text-lg leading-tight mb-1">${escapeHtml(t.name)}</h4>
+                <p class="text-xs font-bold text-brand-500 uppercase tracking-widest">Client Partner</p>
               </div>
             </div>
           </div>
@@ -197,6 +220,16 @@ $(document).ready(function () {
       if (settings.about.yearsExperience) $('#stat-years').text(settings.about.yearsExperience);
       if (settings.about.clientsCount) $('#stat-clients').text(settings.about.clientsCount);
       if (settings.about.image) $('#about-image').attr('src', settings.about.image);
+      
+      // Render Skills Tags
+      if (settings.about.skills && Array.isArray(settings.about.skills)) {
+        const skillsHtml = settings.about.skills.map(skill => `
+          <span class="px-4 py-1.5 bg-brand-500/10 dark:bg-white/5 border border-brand-500/20 dark:border-white/10 text-brand-500 dark:text-brand-400 text-sm font-bold uppercase tracking-wider transition-colors hover:bg-brand-500 hover:text-white cursor-default">
+            ${escapeHtml(skill)}
+          </span>
+        `).join('');
+        $('#about-skills').html(skillsHtml);
+      }
     }
 
     // Contact Info & Socials
@@ -229,6 +262,20 @@ $(document).ready(function () {
 
     // Social Links in Footer
     if (settings.socialLinks) {
+      // Dynamic Instagram Username UI
+      if (settings.socialLinks.instagram) {
+        const handle = extractInstagramHandle(settings.socialLinks.instagram);
+        const url = settings.socialLinks.instagram;
+        
+        if (handle) {
+          $('#instagram-follow-text').text(`Follow ${handle}`);
+          $('#instagram-follow-mobile').html(`Follow on Instagram ${handle} <i class="fa-brands fa-instagram ml-2"></i>`);
+        }
+        
+        $('#instagram-follow-link').attr('href', url);
+        $('#instagram-follow-mobile').attr('href', url);
+      }
+
       let socialHtml = '';
       if (settings.socialLinks.instagram) {
         socialHtml += `<a href="${settings.socialLinks.instagram}" target="_blank" class="w-10 h-10 rounded-full bg-white dark:bg-white/5 flex items-center justify-center text-gray-400 hover:bg-brand-500 hover:text-white transition-all shadow-sm border border-gray-100 dark:border-white/10"><i class="fa-brands fa-instagram"></i></a>`;
@@ -243,11 +290,14 @@ $(document).ready(function () {
     }
 
     // Refresh AOS for new elements
-    setTimeout(() => { 
-      AOS.refresh(); 
+    setTimeout(() => {
+      AOS.refresh();
       console.log("AOS Refresh triggered for dynamic content");
     }, 300);
   }
+
+  let currentLightboxIndex = 0;
+  let filteredLightboxItems = [];
 
   // ========== PORTFOLIO FILTERING LOGIC ==========
   function renderPortfolioFilters(categories) {
@@ -341,7 +391,8 @@ $(document).ready(function () {
       const titleLabel = String(item.title || item.alt || "Portfolio Item");
 
       return `
-        <div class="group relative overflow-hidden rounded-2xl shadow-xl cursor-pointer h-72 md:h-96" data-aos="fade-up" data-aos-delay="${50 * (i % 6)}">
+        <div class="portfolio-item group relative overflow-hidden shadow-xl cursor-pointer h-48 sm:h-64 md:h-96" 
+             data-aos="fade-up" data-aos-delay="${50 * (i % 6)}" data-index="${i}">
           <img src="${item.image}" alt="${escapeHtml(titleLabel)}" class="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" loading="lazy">
           <div class="absolute inset-0 bg-gradient-to-t from-brand-950 via-brand-950/40 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500 flex flex-col justify-end p-6">
             <div class="transform translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
@@ -350,19 +401,85 @@ $(document).ready(function () {
               <div class="w-12 h-1 bg-brand-500 rounded-full"></div>
             </div>
           </div>
-          <div class="absolute top-4 right-4 bg-brand-500/90 text-white w-10 h-10 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-0 group-hover:scale-100">
-             <i class="fa-solid fa-plus text-lg"></i>
-          </div>
         </div>
       `;
     }).join('');
 
+    filteredLightboxItems = items;
+
     const grid = $('#portfolio-grid');
     grid.fadeOut(200, function () {
       grid.html(gridHtml).fadeIn(300);
+      
+      // Bind Lightbox clicks after render
+      $('.portfolio-item').click(function() {
+        const idx = $(this).data('index');
+        openLightbox(idx);
+      });
+
       AOS.refresh();
     });
   }
+
+  // ========== LIGHTBOX LOGIC ==========
+  function openLightbox(index) {
+    currentLightboxIndex = index;
+    updateLightboxContent();
+    $('#lightbox').addClass('active').css('display', 'flex');
+    $('body').css('overflow', 'hidden');
+  }
+
+  function closeLightbox() {
+    $('#lightbox').removeClass('active');
+    setTimeout(() => $('#lightbox').css('display', 'none'), 300);
+    $('body').css('overflow', '');
+  }
+
+  function updateLightboxContent() {
+    const item = filteredLightboxItems[currentLightboxIndex];
+    if (!item) return;
+
+    const img = $('#lightbox-img');
+    img.attr('src', item.image);
+    $('#lightbox-title').text(item.title || item.alt || "Portfolio Project");
+    $('#lightbox-category').text(item.subCategory || item.category || "Creative");
+
+    // Handle arrows visibility
+    $('#lightbox-prev').toggleClass('hidden', currentLightboxIndex === 0);
+    $('#lightbox-next').toggleClass('hidden', currentLightboxIndex === filteredLightboxItems.length - 1);
+  }
+
+  $(document).on('click', '#lightbox-close', function(e) {
+    e.stopPropagation();
+    closeLightbox();
+  });
+
+  $(document).on('click', '#lightbox', function(e) {
+    if (e.target === this) closeLightbox();
+  });
+
+  $('#lightbox-next').click(function(e) {
+    e.stopPropagation();
+    if (currentLightboxIndex < filteredLightboxItems.length - 1) {
+      currentLightboxIndex++;
+      updateLightboxContent();
+    }
+  });
+
+  $('#lightbox-prev').click(function(e) {
+    e.stopPropagation();
+    if (currentLightboxIndex > 0) {
+      currentLightboxIndex--;
+      updateLightboxContent();
+    }
+  });
+
+  $(document).keydown(function(e) {
+    if (!$('#lightbox').hasClass('active')) return;
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowRight") $('#lightbox-next').click();
+    if (e.key === "ArrowLeft") $('#lightbox-prev').click();
+  });
 
   // ========== THEME TOGGLE LOGIC ==========
   function updateThemeIcons() {
@@ -390,7 +507,7 @@ $(document).ready(function () {
   }
 
   // Bind click events to both desktop and mobile toggle buttons
-  $('#theme-toggle, #theme-toggle-mobile').on('click', function(e) {
+  $('#theme-toggle, #theme-toggle-mobile').on('click', function (e) {
     e.preventDefault();
     toggleTheme();
   });
@@ -401,7 +518,7 @@ $(document).ready(function () {
   // Navbar scroll
   $(window).scroll(function () {
     const isScrolled = $(this).scrollTop() > 50;
-    $('#navbar').toggleClass('shadow-xl bg-white/95 dark:bg-brand-950/95 py-2', isScrolled);
+    $('#navbar').toggleClass('shadow-xl py-2', isScrolled);
     $('#navbar').toggleClass('py-4', !isScrolled);
     $('#backToTop').toggleClass('opacity-100 visible translate-y-0', $(this).scrollTop() > 400);
     $('#backToTop').toggleClass('translate-y-10', $(this).scrollTop() <= 400);
@@ -436,7 +553,7 @@ $(document).ready(function () {
     try {
       const { collection, addDoc } = window.firebaseFirestoreVars;
       await addDoc(collection(window.firebaseDb, "contacts"), formData);
-      
+
       btn.html('<i class="fa-solid fa-check"></i> Message Sent!').removeClass('bg-brand-500').addClass('bg-green-500');
       this.reset();
     } catch (err) {

@@ -10,6 +10,16 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function extractImageUrl(text) {
+  if (!text) return "";
+  // Detect [img]...[/img] tags
+  const match = text.match(/\[img\](.*?)\[\/img\]/i);
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return text.trim();
+}
+
 function isValidInstagramReelUrl(url) {
   if (!url) return false;
   // Standardize URL and handle various formats: /reel/ID, /reels/ID, /p/ID
@@ -260,13 +270,36 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("showIconGuideBtn")?.addEventListener("click", (e) => { e.preventDefault(); window.openIconGuide("modal-icon"); });
     document.getElementById("showIconGuideBtnPort")?.addEventListener("click", (e) => { e.preventDefault(); window.openIconGuide("newCategoryIcon"); });
     document.getElementById("closeIconGuideBtn")?.addEventListener("click", (e) => { e.preventDefault(); window.closeIconGuide(); });
+    document.getElementById("statusModalCloseBtn")?.addEventListener("click", () => { byId("statusModal").close(); });
 });
 
 function setStatus(message, isError = false) {
-  const status = byId("status");
-  if (!status) return;
-  status.textContent = message;
-  status.style.color = isError ? "#c22b2b" : "#2f6a2f";
+  const modal = byId("statusModal");
+  const icon = byId("statusIcon");
+  const title = byId("statusTitle");
+  const msg = byId("statusMessage");
+  
+  if (!modal || !icon || !title || !msg) {
+    console.error("Status modal elements not found!");
+    return;
+  }
+
+  // Set the visual state
+  modal.classList.remove("success", "error");
+  modal.classList.add(isError ? "error" : "success");
+  
+  title.textContent = isError ? "Error Occurred" : "Action Success";
+  icon.innerHTML = isError ? '<i class="fa-solid fa-circle-xmark"></i>' : '<i class="fa-solid fa-circle-check"></i>';
+  msg.textContent = message;
+
+  modal.showModal();
+
+  // Auto-close if successful
+  if (!isError) {
+    setTimeout(() => {
+      if (modal.open) modal.close();
+    }, 2800);
+  }
 }
 
 function parseJsonField(id, fieldName) {
@@ -462,7 +495,11 @@ function renderTestimonialsEditor() {
       (item, index) => `
       <div class="crud-list-item">
         <div class="crud-item-content">
-          <div class="crud-item-icon" style="background:var(--icon-green)"><i class="fa-solid fa-star"></i></div>
+          <div class="crud-item-icon" style="background:var(--icon-green); padding:0; overflow:hidden;">
+            ${item.image 
+              ? `<img src="${escapeHtml(item.image)}" style="width: 100%; hieght: 100%; object-fit: cover;" />` 
+              : `<i class="fa-solid fa-star"></i>`}
+          </div>
           <div class="crud-item-details">
             <h4>${escapeHtml(item.name)} (${item.rating}/5)</h4>
             <p>"${escapeHtml(item.quote)}"</p>
@@ -609,14 +646,14 @@ function openCrudModal(type, index) {
     html = `
       <div class="item-row">
         <label>Main Category</label>
-        <select id="modal-cat" onchange="window.updateSubCategoryOptions(this.value)" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #FAEBD7; color: var(--text-color);">
+        <select id="modal-cat" class="modal-select">
           <option value="">Select Category</option>
           ${currentPortfolioCategories.map(c => `<option value="${escapeHtml(c.label)}" ${item.category === c.label ? 'selected' : ''}>${escapeHtml(c.label)}</option>`).join("")}
         </select>
       </div>
       <div class="item-row">
         <label>Sub Category</label>
-        <select id="modal-sub-cat" style="width: 100%; padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: #FAEBD7; color: var(--text-color);">
+        <select id="modal-sub-cat" class="modal-select">
           ${subOptions.map(s => `<option value="${escapeHtml(s)}" ${item.subCategory === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join("")}
         </select>
       </div>
@@ -639,7 +676,7 @@ function openCrudModal(type, index) {
     html = `
       <div class="item-row">
         <label>Instagram Reel Link</label>
-        <input id="modal-reel-url" oninput="window.updateReelPreview()" placeholder="e.g. https://www.instagram.com/reel/Cqxxxxx/" value="${escapeHtml(item.image)}" />
+        <input id="modal-reel-url" placeholder="e.g. https://www.instagram.com/reel/Cqxxxxx/" value="${escapeHtml(item.image)}" />
         <small style="color:var(--text-light);margin-top:4px;display:block;">Must be a valid https://www.instagram.com/reel/... URL.</small>
       </div>
       <div id="preview-error" class="preview-error"></div>
@@ -668,6 +705,10 @@ function openCrudModal(type, index) {
         <textarea id="modal-quote" rows="3">${escapeHtml(item.quote)}</textarea>
       </div>
       <div class="item-row">
+        <label>Client Image URL</label>
+        <input id="modal-testimonial-img" value="${escapeHtml(item.image || "")}" placeholder="e.g. ImgBB direct link" />
+      </div>
+      <div class="item-row">
         <label>Rating (1-5)</label>
         <input type="number" id="modal-rating" min="1" max="5" value="${escapeHtml(item.rating)}" />
       </div>
@@ -688,10 +729,19 @@ window.updateSubCategoryOptions = function (categoryLabel) {
   const subCatSelect = byId("modal-sub-cat");
   if (!subCatSelect) return;
   
+  if (!categoryLabel) {
+    subCatSelect.innerHTML = '<option value="">Select a sub-category</option>';
+    return;
+  }
+
   const catObj = currentPortfolioCategories.find(c => c.label === categoryLabel);
   const options = catObj ? catObj.subCategories : [];
   
-  subCatSelect.innerHTML = options.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  if (options.length === 0) {
+    subCatSelect.innerHTML = '<option value="">No sub-categories available</option>';
+  } else {
+    subCatSelect.innerHTML = options.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+  }
 };
 
 async function saveCrudItem() {
@@ -700,7 +750,7 @@ async function saveCrudItem() {
       icon: byId("modal-icon").value.trim(),
       title: byId("modal-title").value.trim(),
       description: byId("modal-desc").value.trim(),
-      image: byId("modal-service-img").value.trim()
+      image: extractImageUrl(byId("modal-service-img").value)
     };
     if (currentEditIndex === -1) currentServices.push(item);
     else currentServices[currentEditIndex] = item;
@@ -709,7 +759,7 @@ async function saveCrudItem() {
     const item = {
       category: byId("modal-cat").value.trim(),
       subCategory: byId("modal-sub-cat").value.trim(),
-      image: byId("modal-img").value.trim(),
+      image: extractImageUrl(byId("modal-img").value),
       title: byId("modal-title").value.trim(),
       alt: byId("modal-alt").value.trim()
     };
@@ -735,6 +785,7 @@ async function saveCrudItem() {
     const item = {
       name: byId("modal-name").value.trim(),
       quote: byId("modal-quote").value.trim(),
+      image: extractImageUrl(byId("modal-testimonial-img").value),
       rating: Number(byId("modal-rating").value) || 5
     };
     if (currentEditIndex === -1) currentTestimonials.push(item);
@@ -895,13 +946,13 @@ function isValidImageUrl(value) {
 }
 
 function collectPayload() {
-  const ownerImage = byId("ownerImage").value.trim();
+  const ownerImage = extractImageUrl(byId("ownerImage").value);
   // Fix #11: split on both \n and \r\n (Windows line endings)
   const heroDemoImages = byId("heroDemoImages")
     .value.split(/\r?\n/)
-    .map((v) => v.trim())
+    .map((v) => extractImageUrl(v))
     .filter(Boolean);
-  const aboutImage = byId("aboutImage").value.trim();
+  const aboutImage = extractImageUrl(byId("aboutImage").value);
 
   if (!isValidImageUrl(ownerImage)) {
     throw new Error("Owner image URL is invalid.");
@@ -918,8 +969,8 @@ function collectPayload() {
   return {
     siteInfo: {
       brandName: byId("siteTitle").value.trim(),
-      brandLogo: byId("brandLogo").value.trim(),
-      favicon: byId("favicon").value.trim(),
+      brandLogo: extractImageUrl(byId("brandLogo").value),
+      favicon: extractImageUrl(byId("favicon").value),
       tagline: byId("siteTagline").value.trim(),
       footerText: byId("footerText").value.trim()
     },
@@ -935,7 +986,7 @@ function collectPayload() {
     reelsItems: currentReelsItems,
     testimonials: currentTestimonials,
     about: {
-      image: byId("aboutImage").value.trim(),
+      image: aboutImage,
       text: byId("aboutText").value.trim(),
       skills: byId("skills")
         .value.split(",")
@@ -1219,6 +1270,37 @@ document.addEventListener("click", (e) => {
   }
 });
 
+// Delegated change/input listeners for modal reactivity (Fix #13 / CSP)
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.id === "modal-cat") {
+    window.updateSubCategoryOptions(e.target.value);
+  }
+});
+
+document.addEventListener("input", (e) => {
+  if (e.target && e.target.id === "modal-reel-url") {
+    window.updateReelPreview();
+  }
+  
+  // ImgBB BBCode Auto-Extraction
+  const imageFieldIds = ["ownerImage", "aboutImage", "brandLogo", "favicon", "modal-service-img", "modal-img"];
+  if (e.target && imageFieldIds.includes(e.target.id)) {
+    const val = e.target.value;
+    if (val.includes("[img]")) {
+      e.target.value = extractImageUrl(val);
+    }
+  }
+
+  // Handle heroDemoImages textarea special case
+  if (e.target && e.target.id === "heroDemoImages") {
+    const lines = e.target.value.split(/\r?\n/);
+    const cleaned = lines.map(line => extractImageUrl(line));
+    if (cleaned.join("\n") !== e.target.value) {
+      e.target.value = cleaned.join("\n");
+    }
+  }
+});
+
 // ─── Mobile Sidebar Toggle ──────────────────────────────────────────────────
 const mobileMenuBtn = byId("mobileMenuBtn");
 const mobileCloseBtn = byId("mobileCloseBtn");
@@ -1327,7 +1409,7 @@ if (purgeTrafficBtn) {
         deletePromises.push(deleteDoc(doc(window.firebaseDb, "traffic", docSnap.id)));
       });
       await Promise.all(deletePromises);
-      alert("All traffic data has been successfully purged.");
+      setStatus("All traffic data has been successfully purged.");
       fetchTrafficData();
     } catch (e) {
       alert("Failed to purge traffic data.");

@@ -139,7 +139,7 @@
                   alt="About preview" />
                 <div class="about-summary-content">
                   <div class="stats-grid">
-                    <div><strong id="summaryYearsExperience">2+</strong><span>Years Experience</span></div>
+                    <div><strong id="summaryYearsExperience">2+</strong><span>Projects Completed</span></div>
                     <div><strong id="summaryClientsCount">795+</strong><span>Happy Clients</span></div>
                   </div>
                   <button class="primary-btn" type="button" data-action="activateTab" data-tab="aboutTab">
@@ -240,8 +240,8 @@
           <section class="card">
             <h3>About Section</h3>
             <textarea id="aboutText" rows="4" placeholder="About text"></textarea>
-            <input id="yearsExperience" type="text" placeholder="Years experience (e.g. 2+)" />
-            <input id="clientsCount" type="text" placeholder="Clients count (e.g. 795+)" />
+            <input id="yearsExperience" type="text" placeholder="Projects Completed (e.g. 320+)" />
+            <input id="clientsCount" type="text" placeholder="Happy Clients (e.g. 150+)" />
             <textarea id="skills" rows="3" placeholder="Skills (comma separated)"></textarea>
           </section>
           <section class="card">
@@ -425,6 +425,17 @@
         <button type="button" class="secondary-btn" id="crudModalCancelBtn">Cancel</button>
         <button type="button" class="primary-btn" id="crudModalSaveBtn">Save Item</button>
       </footer>
+    </div>
+  </dialog>
+
+  <dialog id="statusModal" class="status-modal">
+    <div class="status-modal-content">
+      <div id="statusIcon" class="status-icon"></div>
+      <div class="status-text-content">
+        <h3 id="statusTitle">Success</h3>
+        <p id="statusMessage"></p>
+      </div>
+      <button type="button" class="status-close-btn" id="statusModalCloseBtn"><i class="fa-solid fa-xmark"></i></button>
     </div>
   </dialog>
 
