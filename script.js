@@ -53,10 +53,23 @@ $(document).ready(function () {
   let activeSubCat = "All";
 
   // ========== DATA FETCHING & RENDERING ==========
+  // Helper to wait for Firebase variables to be available on window
+  async function waitForFirebase() {
+    return new Promise((resolve) => {
+      const checkFallback = setInterval(() => {
+        if (window.firebaseDb && window.firebaseFirestoreVars) {
+          clearInterval(checkFallback);
+          resolve();
+        }
+      }, 50);
+      // Safety timeout
+      setTimeout(() => { clearInterval(checkFallback); resolve(); }, 3000);
+    });
+  }
+
   async function loadSettings() {
     try {
-      // Small delay to ensure Firebase initializes completely before fetching
-      await new Promise(r => setTimeout(r, 100));
+      await waitForFirebase();
 
       const { doc, getDoc } = window.firebaseFirestoreVars;
       const settingsRef = doc(window.firebaseDb, "settings", "main");
@@ -65,11 +78,9 @@ $(document).ready(function () {
       if (docSnap.exists()) {
         allSettings = docSnap.data();
         renderPage(allSettings);
-      } else {
-        console.warn("No site settings found in Firebase!");
       }
     } catch (error) {
-      console.error('Failed to load site settings:', error);
+      // Silent fail, layout defaults remain
     }
   }
 
@@ -85,8 +96,9 @@ $(document).ready(function () {
       $('#nav-brand').text(brand);
 
       // Update Footer Brand intelligently
-      if (brand.toUpperCase() === 'vivek' || brand.toUpperCase() === 'DESIGNPRO') {
-        const brandMatch = brand.toUpperCase() === 'vivek' ? 'PHOTO<span class="text-brand-500">FIXX</span>' : 'DESIGN<span class="text-brand-500">PRO</span>';
+      if (brand.toUpperCase() === 'VIVEK' || brand.toUpperCase() === 'PHOTOFIXX' || brand.toUpperCase() === 'DESIGNPRO') {
+        const brandMatch = brand.toUpperCase() === 'VIVEK' ? 'PHOTO<span class="text-brand-500">FIXX</span>' : 
+                          brand.toUpperCase() === 'PHOTOFIXX' ? 'PHOTO<span class="text-brand-500">FIXX</span>' : 'DESIGN<span class="text-brand-500">PRO</span>';
         $('#footer-brand').html(brandMatch);
       } else {
         $('#footer-brand').text(brand);
@@ -292,7 +304,6 @@ $(document).ready(function () {
     // Refresh AOS for new elements
     setTimeout(() => {
       AOS.refresh();
-      console.log("AOS Refresh triggered for dynamic content");
     }, 300);
   }
 
@@ -485,13 +496,12 @@ $(document).ready(function () {
   function updateThemeIcons() {
     const isDark = $('html').hasClass('dark');
     if (isDark) {
-      $('#theme-toggle-light-icon, #theme-toggle-light-icon-m').removeClass('hidden');
-      $('#theme-toggle-dark-icon, #theme-toggle-dark-icon-m').addClass('hidden');
+      $('.theme-icon-light').removeClass('hidden');
+      $('.theme-icon-dark').addClass('hidden');
     } else {
-      $('#theme-toggle-light-icon, #theme-toggle-light-icon-m').addClass('hidden');
-      $('#theme-toggle-dark-icon, #theme-toggle-dark-icon-m').removeClass('hidden');
+      $('.theme-icon-light').addClass('hidden');
+      $('.theme-icon-dark').removeClass('hidden');
     }
-    console.log("Theme icons updated. Mode:", isDark ? "Dark" : "Light");
   }
 
   function toggleTheme() {
@@ -506,8 +516,8 @@ $(document).ready(function () {
     updateThemeIcons();
   }
 
-  // Bind click events to both desktop and mobile toggle buttons
-  $('#theme-toggle, #theme-toggle-mobile').on('click', function (e) {
+  // Bind click events to all toggle buttons (Desktop, Mobile Navbar, Mobile Drawer)
+  $('#theme-toggle, #theme-toggle-mobile, #theme-toggle-mobile-drawer').on('click', function (e) {
     e.preventDefault();
     toggleTheme();
   });
@@ -557,12 +567,11 @@ $(document).ready(function () {
       btn.html('<i class="fa-solid fa-check"></i> Message Sent!').removeClass('bg-brand-500').addClass('bg-green-500');
       this.reset();
     } catch (err) {
-      console.error(err);
-      alert('Communication error. Please try again.');
-      btn.html(original).prop('disabled', false);
+      btn.html('<i class="fa-solid fa-triangle-exclamation"></i> Error').addClass('bg-red-500');
+      btn.prop('disabled', false);
     } finally {
       setTimeout(() => {
-        btn.html(original).prop('disabled', false).removeClass('bg-green-500').addClass('bg-brand-500');
+        btn.html(original).prop('disabled', false).removeClass('bg-green-500 bg-red-500').addClass('bg-brand-500');
       }, 3000);
     }
   });

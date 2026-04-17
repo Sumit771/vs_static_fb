@@ -30,10 +30,23 @@ $(document).ready(function () {
   }
 
   // ========== DATA FETCHING ==========
+  // Helper to wait for Firebase variables to be available on window
+  async function waitForFirebase() {
+    return new Promise((resolve) => {
+      const checkFallback = setInterval(() => {
+        if (window.firebaseDb && window.firebaseFirestoreVars) {
+          clearInterval(checkFallback);
+          resolve();
+        }
+      }, 50);
+      // Safety timeout
+      setTimeout(() => { clearInterval(checkFallback); resolve(); }, 3000);
+    });
+  }
+
   async function loadGalleryData() {
     try {
-      // Ensure Firebase initializes
-      await new Promise(r => setTimeout(r, 200));
+      await waitForFirebase();
 
       const { doc, getDoc } = window.firebaseFirestoreVars;
       const settingsRef = doc(window.firebaseDb, "settings", "main");
@@ -46,11 +59,20 @@ $(document).ready(function () {
         // Update Brand & Site Info
         if (settings.siteInfo) {
            const brand = settings.siteInfo.brandName || 'vivek';
-           $('#nav-brand').text(brand);
-           $('#footer-brand').text(brand);
-           $('#footer-text').text(settings.siteInfo.footerText || '');
+           document.title = `${brand} • Full Portfolio Gallery`;
            
-           // Update Copyright Name
+           // Update Navbar & Footer Brand (with Purple Accent Logic)
+           if (brand.toUpperCase() === 'VIVEK' || brand.toUpperCase() === 'DESIGNPRO' || brand.toUpperCase() === 'PHOTOFIXX') {
+             const brandMatch = brand.toUpperCase() === 'VIVEK' ? 'VIVEK<span class="text-brand-500">SURYAVANSHI</span>' : 
+                               brand.toUpperCase() === 'PHOTOFIXX' ? 'PHOTO<span class="text-brand-500">FIXX</span>' : 'DESIGN<span class="text-brand-500">PRO</span>';
+             $('#nav-brand').html(brandMatch);
+             $('#footer-brand').html(brandMatch);
+           } else {
+             $('#nav-brand').text(brand);
+             $('#footer-brand').text(brand);
+           }
+           
+           $('#footer-text').text(settings.siteInfo.footerText || '');
            $('#footer-copyright-name').text(`${brand} Studio`);
         }
 
@@ -64,8 +86,7 @@ $(document).ready(function () {
         applyFiltersAndRender();
       }
     } catch (error) {
-      console.error('Gallery failed to load:', error);
-      $('#gallery-grid').html('<p class="text-center text-red-500 py-20">Error loading projects. Please refresh.</p>');
+      $('#gallery-grid').html('<p class="text-center text-red-500 py-20">Unable to establish connection. Please check your network.</p>');
     }
   }
 
@@ -150,8 +171,8 @@ $(document).ready(function () {
 
     grid.html(html);
     
-    // Bind clicks for Lightbox
-    $('.gallery-item').click(function() {
+    // Bind clicks for Lightbox after render
+    $('.gallery-item').off('click').on('click', function() {
         openLightbox($(this).data('index'));
     });
 
@@ -205,36 +226,38 @@ $(document).ready(function () {
       if (e.target === this) closeLightbox();
   });
 
-  $('#lightbox-next').click(function() {
+  $('#lightbox-next').off('click').on('click', function(e) {
+      e.stopPropagation();
       if (currentLightboxIndex < filteredItems.length - 1) {
           currentLightboxIndex++;
           updateLightboxContent();
       }
   });
 
-  $('#lightbox-prev').click(function() {
+  $('#lightbox-prev').off('click').on('click', function(e) {
+      e.stopPropagation();
       if (currentLightboxIndex > 0) {
           currentLightboxIndex--;
           updateLightboxContent();
       }
   });
 
-  $(document).keydown(function(e) {
+  $(document).off('keydown').on('keydown', function(e) {
       if (!$('#lightbox').hasClass('active')) return;
       if (e.key === "Escape") closeLightbox();
-      if (e.key === "ArrowRight" && currentLightboxIndex < filteredItems.length - 1) $('#lightbox-next').click();
-      if (e.key === "ArrowLeft" && currentLightboxIndex > 0) $('#lightbox-prev').click();
+      if (e.key === "ArrowRight") $('#lightbox-next').click();
+      if (e.key === "ArrowLeft") $('#lightbox-prev').click();
   });
 
   // ========== THEME HANDLING ==========
   function updateThemeIcons() {
     const isDark = $('html').hasClass('dark');
     if (isDark) {
-      $('#theme-toggle-light-icon, #theme-toggle-light-icon-m').removeClass('hidden');
-      $('#theme-toggle-dark-icon, #theme-toggle-dark-icon-m').addClass('hidden');
+      $('.theme-icon-light').removeClass('hidden');
+      $('.theme-icon-dark').addClass('hidden');
     } else {
-      $('#theme-toggle-light-icon, #theme-toggle-light-icon-m').addClass('hidden');
-      $('#theme-toggle-dark-icon, #theme-toggle-dark-icon-m').removeClass('hidden');
+      $('.theme-icon-light').addClass('hidden');
+      $('.theme-icon-dark').removeClass('hidden');
     }
   }
 

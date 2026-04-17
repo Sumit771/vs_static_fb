@@ -1412,10 +1412,34 @@ if (purgeTrafficBtn) {
       setStatus("All traffic data has been successfully purged.");
       fetchTrafficData();
     } catch (e) {
-      alert("Failed to purge traffic data.");
+      setStatus("Failed to purge traffic data.");
       console.error(e);
     }
   });
+  // ========== THEME TOGGLE LOGIC ==========
+  function updateThemeIcons() {
+    const isDark = document.documentElement.classList.contains('dark');
+    if (isDark) {
+      $('.theme-icon-light').removeClass('hidden');
+      $('.theme-icon-dark').addClass('hidden');
+    } else {
+      $('.theme-icon-light').addClass('hidden');
+      $('.theme-icon-dark').removeClass('hidden');
+    }
+  }
+
+  $('#theme-toggle').on('click', function(e) {
+    if (document.documentElement.classList.contains('dark')) {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    }
+    updateThemeIcons();
+  });
+
+  updateThemeIcons();
 }
 
 initSession();

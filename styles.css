@@ -1,5 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 body {
   font-family: 'Poppins', sans-serif;
+}
+
+/* Force hidden utility if Tailwind's build is wonky */
+.hidden {
+  display: none;
 }
 
 .hero-bg {

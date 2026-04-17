@@ -9,6 +9,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="theme-check.js"></script>
+  <link rel="stylesheet" href="dist/styles.css">
   <link rel="stylesheet" href="admin.css" />
 </head>
 
@@ -70,8 +72,9 @@
             <h1 id="workspaceTitle">Dashboard</h1>
           </div>
           <div class="topbar-actions">
-            <button type="button" class="icon-btn" id="themeToggleBtn" title="Toggle Theme">
-              <i class="fa-solid fa-moon"></i>
+            <button type="button" class="icon-btn" id="theme-toggle" title="Toggle Theme">
+              <i id="theme-toggle-dark-icon" class="fa-solid fa-moon theme-icon-dark hidden"></i>
+              <i id="theme-toggle-light-icon" class="fa-solid fa-sun theme-icon-light hidden"></i>
             </button>
             <div class="profile-pill">
               <span><i class="fa-solid fa-user"></i></span> <strong id="adminProfileName">Admin</strong> <i
